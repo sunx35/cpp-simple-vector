@@ -24,31 +24,27 @@ public:
     SimpleVector() noexcept = default;
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size) : array_ptr_(size) {
-        size_ = size;
-        capacity_ = size;
+    explicit SimpleVector(size_t size)
+        : array_ptr_(size)
+        , size_(size)
+        , capacity_(size) {
         std::fill(begin(), end(), Type());
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value) : array_ptr_(size) {
-        for (size_t i = 0; i < size; ++i) {
-            array_ptr_.GetRawPtr()[i] = value;
-        }
-        size_ = size;
-        capacity_ = size;
+    SimpleVector(size_t size, const Type& value)
+        : array_ptr_(size)
+        , size_(size)
+        , capacity_(size) {
+        std::fill(begin(), end(), value);
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init) : array_ptr_(init.size()) {
-        size_ = init.size();
-        capacity_ = init.size();
-
-        auto array_ptr = array_ptr_.GetRawPtr();
-        for (auto it = init.begin(); it != init.end(); ++it) {
-            *array_ptr = *it;
-            ++array_ptr;
-        }
+    SimpleVector(std::initializer_list<Type> init)
+        : array_ptr_(init.size())
+        , size_(init.size())
+        , capacity_(init.size()) {
+        std::move(init.begin(), init.end(), array_ptr_.GetRawPtr());
     }
 
     SimpleVector(ReserveProxyObj reserve) : array_ptr_() {
@@ -99,12 +95,12 @@ public:
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
-        return array_ptr_.GetRawPtr()[index];
+        return array_ptr_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
-        return array_ptr_.GetRawPtr()[index];
+        return array_ptr_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
@@ -113,7 +109,7 @@ public:
         if (index >= size_) {
             throw std::out_of_range("Index is out of range");
         }
-        return array_ptr_.GetRawPtr()[index];
+        return array_ptr_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
@@ -122,7 +118,7 @@ public:
         if (index >= size_) {
             throw std::out_of_range("Index is out of range");
         }
-        return array_ptr_.GetRawPtr()[index];
+        return array_ptr_[index];
     }
 
     // Обнуляет размер массива, не изменяя его вместимость
@@ -140,16 +136,12 @@ public:
             size_ = new_size;
         }
         else if (new_size > size_ && new_size <= capacity_) {
-            for (auto it = array_ptr_.GetRawPtr() + size_; it != array_ptr_.GetRawPtr() + new_size; ++it) {
-                *it = Type();
-            }
+            Fill(new_size);
             size_ = new_size;
         }
         else if (new_size > capacity_) {
             array_ptr_.Resize(size_, std::max(new_size, capacity_ * 2));
-            for (auto it = array_ptr_.GetRawPtr() + size_; it != array_ptr_.GetRawPtr() + new_size; ++it) {
-                *it = Type();
-            }
+            Fill(new_size);
             size_ = new_size;
             capacity_ = std::max(new_size, capacity_ * 2);
         }
@@ -223,9 +215,7 @@ public:
 
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept {
-        if (size_ == 0) {
-            return;
-        }
+        assert(size_ != 0 && "Vector is empty");
         --size_;
     }
 
@@ -239,10 +229,7 @@ public:
 
     // Обменивает значение с другим вектором
     void swap(SimpleVector& other) noexcept {
-        Type* temp = other.array_ptr_.GetRawPtr();
-        other.array_ptr_.SetRawPtr(array_ptr_.GetRawPtr());
-        array_ptr_.SetRawPtr(temp);
-
+        std::swap(array_ptr_, other.array_ptr_);
         std::swap(size_, other.size_);
         std::swap(capacity_, other.capacity_);
     }
@@ -292,6 +279,12 @@ public:
     }
 
 private:
+    void Fill(size_t new_size) {
+        for (auto it = array_ptr_.GetRawPtr() + size_; it != array_ptr_.GetRawPtr() + new_size; ++it) {
+            *it = Type();
+        }
+    }
+
     ArrayPtr<Type> array_ptr_;
     size_t size_ = 0;
     size_t capacity_ = 0;
